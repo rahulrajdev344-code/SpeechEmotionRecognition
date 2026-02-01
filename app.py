@@ -55,11 +55,38 @@ EMOTION_EMOJI = {
 @st.cache_resource
 def load_model():
     """Load the pre-trained CNN model"""
+    import os
+    import urllib.request
+    
+    model_path = 'Model Files/CNN_model.h5'
+    
+    # Create directory if it doesn't exist
+    os.makedirs('Model Files', exist_ok=True)
+    
+    # Check if model file exists and is valid (not a Git LFS pointer)
+    if os.path.exists(model_path):
+        file_size = os.path.getsize(model_path)
+        # Git LFS pointer files are very small (~130 bytes)
+        if file_size < 1000:
+            st.info("Model file appears to be a Git LFS pointer. Downloading actual model...")
+            os.remove(model_path)
+    
+    # Download model if it doesn't exist
+    if not os.path.exists(model_path):
+        st.info("Downloading CNN model file...")
+        model_url = "https://github.com/rahulrajdev344-code/SpeechEmotionRecognition/raw/main/Model%20Files/CNN_model.h5"
+        try:
+            urllib.request.urlretrieve(model_url, model_path)
+            st.success("Model downloaded successfully!")
+        except Exception as e:
+            st.error(f"Failed to download model: {e}")
+            return None
+    
     try:
-        model = keras.models.load_model('Model Files/CNN_model.h5')
+        model = keras.models.load_model(model_path)
         return model
-    except:
-        st.error("Model file not found. Please ensure 'Model Files/CNN_model.h5' exists.")
+    except Exception as e:
+        st.error(f"Model file not found or corrupted: {e}")
         return None
 
 def extract_features(audio_data, sr):
