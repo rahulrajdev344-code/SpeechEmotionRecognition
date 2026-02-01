@@ -82,13 +82,50 @@ def load_model():
             st.error(f"Failed to download model: {e}")
             return None
     
+    # Try multiple methods to load the model
     try:
-        # Use tf.keras for legacy .h5 model compatibility
         import tensorflow as tf
-        model = tf.keras.models.load_model(model_path, compile=False)
-        return model
+        import h5py
+        
+        # Method 1: Try standard Keras loading with safe_mode=False
+        try:
+            model = tf.keras.models.load_model(model_path, compile=False, safe_mode=False)
+            return model
+        except Exception as e1:
+            st.warning(f"Standard loading failed: {e1}")
+        
+        # Method 2: Try loading with custom_objects
+        try:
+            model = tf.keras.models.load_model(model_path, compile=False, custom_objects=None)
+            return model
+        except Exception as e2:
+            st.warning(f"Custom objects loading failed: {e2}")
+        
+        # Method 3: Recreate model architecture and load weights
+        try:
+            # Check if file is valid h5
+            with h5py.File(model_path, 'r') as f:
+                st.info(f"H5 file keys: {list(f.keys())}")
+            
+            # Build a simple CNN model matching the original architecture
+            model = tf.keras.Sequential([
+                tf.keras.layers.Conv1D(256, 5, padding='same', activation='relu', input_shape=(180, 1)),
+                tf.keras.layers.Conv1D(128, 5, padding='same', activation='relu'),
+                tf.keras.layers.Dropout(0.1),
+                tf.keras.layers.MaxPooling1D(8),
+                tf.keras.layers.Conv1D(128, 5, padding='same', activation='relu'),
+                tf.keras.layers.Conv1D(128, 5, padding='same', activation='relu'),
+                tf.keras.layers.Flatten(),
+                tf.keras.layers.Dense(8, activation='softmax')
+            ])
+            model.load_weights(model_path)
+            return model
+        except Exception as e3:
+            st.error(f"Weights-only loading failed: {e3}")
+        
+        return None
     except Exception as e:
-        st.error(f"Model file not found or corrupted: {e}")
+        st.error(f"Model loading failed completely: {e}")
         return None
 
 def extract_features(audio_data, sr):
