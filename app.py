@@ -83,7 +83,9 @@ def load_model():
             return None
     
     try:
-        model = keras.models.load_model(model_path)
+        # Use tf.keras for legacy .h5 model compatibility
+        import tensorflow as tf
+        model = tf.keras.models.load_model(model_path, compile=False)
         return model
     except Exception as e:
         st.error(f"Model file not found or corrupted: {e}")
